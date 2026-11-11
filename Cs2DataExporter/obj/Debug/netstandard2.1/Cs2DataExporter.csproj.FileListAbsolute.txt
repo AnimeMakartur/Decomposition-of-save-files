@@ -1,0 +1,10 @@
+D:\Важливі файли\Decomposition of save files\Cs2DataExporter\bin\Debug\netstandard2.1\Cs2DataExporter.deps.json
+D:\Важливі файли\Decomposition of save files\Cs2DataExporter\bin\Debug\netstandard2.1\Cs2DataExporter.dll
+D:\Важливі файли\Decomposition of save files\Cs2DataExporter\bin\Debug\netstandard2.1\Cs2DataExporter.pdb
+D:\Важливі файли\Decomposition of save files\Cs2DataExporter\obj\Debug\netstandard2.1\Cs2DataExporter.csproj.AssemblyReference.cache
+D:\Важливі файли\Decomposition of save files\Cs2DataExporter\obj\Debug\netstandard2.1\Cs2DataExporter.GeneratedMSBuildEditorConfig.editorconfig
+D:\Важливі файли\Decomposition of save files\Cs2DataExporter\obj\Debug\netstandard2.1\Cs2DataExporter.AssemblyInfoInputs.cache
+D:\Важливі файли\Decomposition of save files\Cs2DataExporter\obj\Debug\netstandard2.1\Cs2DataExporter.AssemblyInfo.cs
+D:\Важливі файли\Decomposition of save files\Cs2DataExporter\obj\Debug\netstandard2.1\Cs2DataExporter.csproj.CoreCompileInputs.cache
+D:\Важливі файли\Decomposition of save files\Cs2DataExporter\obj\Debug\netstandard2.1\Cs2DataExporter.dll
+D:\Важливі файли\Decomposition of save files\Cs2DataExporter\obj\Debug\netstandard2.1\Cs2DataExporter.pdb
