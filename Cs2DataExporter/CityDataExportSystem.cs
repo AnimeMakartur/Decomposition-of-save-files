@@ -100,6 +100,7 @@ namespace Cs2DataExporter
             {
                 Mod.log.Info("Початок експорту графа міста для ШІ...");
                 var export = new CityGraphExport();
+                var laneToRoadEdgeId = new Dictionary<int, int>();
 
                 // 1. Збір вузлів доріг
                 using (var entities = _roadNodeQuery.ToEntityArray(Allocator.Temp))
@@ -132,7 +133,7 @@ namespace Cs2DataExporter
                             StartNodeId = edge.m_Start.Index,
                             EndNodeId = edge.m_End.Index,
                             Length = (float)Math.Round(curve.m_Length, 2),
-                            Lanes = ExtractRoadLanes(entity)
+                            Lanes = ExtractRoadLanes(entity, laneToRoadEdgeId)
                         });
                     }
                 }
@@ -180,25 +181,36 @@ namespace Cs2DataExporter
                             Id = entity.Index,
                             InGameName = GetEntityInGameName(entity),
                             PrefabType = GetPrefabName(prefabRef.m_Prefab),
+                            TransportType = GetStopTransportType(prefabRef.m_Prefab),
                             ParentEntityId = parentId,
+                            RoadEdgeId = GetStopRoadEdgeId(entity, laneToRoadEdgeId),
                             Pos = RoundPos(transform.m_Position)
                         });
                     }
                 }
 
                 // 5. Збір маршрутів та їхніх точок (Waypoints)
+                var stopIds = new HashSet<int>();
+                foreach (var stop in export.Stops)
+                {
+                    stopIds.Add(stop.Id);
+                }
+
                 using (var entities = _routeQuery.ToEntityArray(Allocator.Temp))
                 {
                     foreach (var entity in entities)
                     {
                         var prefabRef = EntityManager.GetComponentData<PrefabRef>(entity);
                         var waypointsBuffer = EntityManager.GetBuffer<RouteWaypoint>(entity);
+                        var line = EntityManager.GetComponentData<TransportLine>(entity);
 
                         var routeDto = new TransitRouteDto
                         {
                             Id = entity.Index,
                             InGameName = GetEntityInGameName(entity),
-                            PrefabType = GetPrefabName(prefabRef.m_Prefab)
+                            PrefabType = GetPrefabName(prefabRef.m_Prefab),
+                            TransportType = GetRouteTransportType(prefabRef.m_Prefab),
+                            TicketPrice = line.m_TicketPrice
                         };
 
                         for (int i = 0; i < waypointsBuffer.Length; i++)
@@ -208,13 +220,31 @@ namespace Cs2DataExporter
                             {
                                 var connected = EntityManager.GetComponentData<Connected>(wpEntity);
                                 routeDto.WaypointEntityIds.Add(connected.m_Connected.Index);
+                                if (stopIds.Contains(connected.m_Connected.Index))
+                                {
+                                    routeDto.StopIds.Add(connected.m_Connected.Index);
+                                }
                             }
                             else
                             {
                                 routeDto.WaypointEntityIds.Add(wpEntity.Index);
+                                if (stopIds.Contains(wpEntity.Index))
+                                {
+                                    routeDto.StopIds.Add(wpEntity.Index);
+                                }
                             }
                         }
 
+                        if (routeDto.StopIds.Count > 0)
+                        {
+                            routeDto.StartStopId = routeDto.StopIds[0];
+                            routeDto.EndStopId = routeDto.StopIds[routeDto.StopIds.Count - 1];
+                        }
+
+                        routeDto.RoadEdgeIds = ExtractRouteRoadEdgeIds(entity, laneToRoadEdgeId);
+                        routeDto.Vehicles = ExtractRouteVehicles(entity, out int? totalPassengerCapacity);
+                        routeDto.VehicleCount = routeDto.Vehicles.Count;
+                        routeDto.TotalPassengerCapacity = totalPassengerCapacity;
                         export.Routes.Add(routeDto);
                     }
                 }
@@ -241,7 +271,9 @@ namespace Cs2DataExporter
         /// <summary>
         /// Отримує список усіх смуг (SubLane), що належать сегменту дороги, із їх типом та напрямком.
         /// </summary>
-        private List<RoadLaneDto> ExtractRoadLanes(Entity edgeEntity)
+        private List<RoadLaneDto> ExtractRoadLanes(
+            Entity edgeEntity,
+            Dictionary<int, int> laneToRoadEdgeId)
         {
             var lanesList = new List<RoadLaneDto>();
 
@@ -268,6 +300,7 @@ namespace Cs2DataExporter
                     continue;
                 }
 
+                laneToRoadEdgeId[laneEntity.Index] = edgeEntity.Index;
                 lanesList.Add(new RoadLaneDto
                 {
                     Id = laneEntity.Index,
@@ -277,6 +310,154 @@ namespace Cs2DataExporter
             }
 
             return lanesList;
+        }
+
+        private int? GetStopRoadEdgeId(Entity stopEntity, Dictionary<int, int> laneToRoadEdgeId)
+        {
+            if (!EntityManager.HasComponent<Game.Routes.AccessLane>(stopEntity))
+            {
+                return null;
+            }
+
+            var accessLane = EntityManager.GetComponentData<Game.Routes.AccessLane>(stopEntity);
+            return accessLane.m_Lane != Entity.Null &&
+                laneToRoadEdgeId.TryGetValue(accessLane.m_Lane.Index, out int roadEdgeId)
+                ? (int?)roadEdgeId
+                : null;
+        }
+
+        private List<int> ExtractRouteRoadEdgeIds(
+            Entity routeEntity,
+            Dictionary<int, int> laneToRoadEdgeId)
+        {
+            var roadEdgeIds = new List<int>();
+            var uniqueRoadEdgeIds = new HashSet<int>();
+
+            if (!EntityManager.HasBuffer<Game.Routes.RouteSegment>(routeEntity))
+            {
+                return roadEdgeIds;
+            }
+
+            var routeSegments = EntityManager.GetBuffer<Game.Routes.RouteSegment>(routeEntity);
+            for (int i = 0; i < routeSegments.Length; i++)
+            {
+                Entity segmentEntity = routeSegments[i].m_Segment;
+                if (!EntityManager.Exists(segmentEntity) ||
+                    !EntityManager.HasComponent<Game.Routes.RouteLane>(segmentEntity))
+                {
+                    continue;
+                }
+
+                var routeLane = EntityManager.GetComponentData<Game.Routes.RouteLane>(segmentEntity);
+                AddRoadEdgeId(routeLane.m_StartLane, laneToRoadEdgeId, uniqueRoadEdgeIds, roadEdgeIds);
+                AddRoadEdgeId(routeLane.m_EndLane, laneToRoadEdgeId, uniqueRoadEdgeIds, roadEdgeIds);
+            }
+
+            return roadEdgeIds;
+        }
+
+        private static void AddRoadEdgeId(
+            Entity laneEntity,
+            Dictionary<int, int> laneToRoadEdgeId,
+            HashSet<int> uniqueRoadEdgeIds,
+            List<int> roadEdgeIds)
+        {
+            if (laneEntity != Entity.Null &&
+                laneToRoadEdgeId.TryGetValue(laneEntity.Index, out int roadEdgeId) &&
+                uniqueRoadEdgeIds.Add(roadEdgeId))
+            {
+                roadEdgeIds.Add(roadEdgeId);
+            }
+        }
+
+        private List<TransitVehicleDto> ExtractRouteVehicles(
+            Entity routeEntity,
+            out int? totalPassengerCapacity)
+        {
+            var vehicles = new List<TransitVehicleDto>();
+            var capacitySum = 0;
+            var allCapacitiesKnown = true;
+
+            if (EntityManager.HasBuffer<Game.Routes.RouteVehicle>(routeEntity))
+            {
+                var routeVehicles = EntityManager.GetBuffer<Game.Routes.RouteVehicle>(routeEntity);
+                for (int i = 0; i < routeVehicles.Length; i++)
+                {
+                    Entity vehicleEntity = routeVehicles[i].m_Vehicle;
+                    if (!EntityManager.Exists(vehicleEntity))
+                    {
+                        continue;
+                    }
+
+                    Entity prefabEntity = Entity.Null;
+                    if (EntityManager.HasComponent<PrefabRef>(vehicleEntity))
+                    {
+                        prefabEntity = EntityManager.GetComponentData<PrefabRef>(vehicleEntity).m_Prefab;
+                    }
+
+                    int? passengerCapacity = GetVehiclePassengerCapacity(prefabEntity);
+                    if (passengerCapacity.HasValue)
+                    {
+                        capacitySum += passengerCapacity.Value;
+                    }
+                    else
+                    {
+                        allCapacitiesKnown = false;
+                    }
+
+                    vehicles.Add(new TransitVehicleDto
+                    {
+                        Id = vehicleEntity.Index,
+                        PrefabType = GetPrefabName(prefabEntity),
+                        PassengerCapacity = passengerCapacity
+                    });
+                }
+            }
+
+            totalPassengerCapacity = vehicles.Count > 0 && allCapacitiesKnown
+                ? (int?)capacitySum
+                : null;
+            return vehicles;
+        }
+
+        private int? GetVehiclePassengerCapacity(Entity prefabEntity)
+        {
+            if (prefabEntity == Entity.Null)
+            {
+                return null;
+            }
+
+            if (EntityManager.HasComponent<Game.Prefabs.PublicTransportVehicleData>(prefabEntity))
+            {
+                return EntityManager.GetComponentData<Game.Prefabs.PublicTransportVehicleData>(prefabEntity)
+                    .m_PassengerCapacity;
+            }
+
+            return null;
+        }
+
+        private string GetStopTransportType(Entity prefabEntity)
+        {
+            if (prefabEntity != Entity.Null &&
+                EntityManager.HasComponent<Game.Prefabs.TransportStopData>(prefabEntity))
+            {
+                return EntityManager.GetComponentData<Game.Prefabs.TransportStopData>(prefabEntity)
+                    .m_TransportType.ToString();
+            }
+
+            return "Unknown";
+        }
+
+        private string GetRouteTransportType(Entity prefabEntity)
+        {
+            if (prefabEntity != Entity.Null &&
+                EntityManager.HasComponent<Game.Prefabs.TransportLineData>(prefabEntity))
+            {
+                return EntityManager.GetComponentData<Game.Prefabs.TransportLineData>(prefabEntity)
+                    .m_TransportType.ToString();
+            }
+
+            return "Unknown";
         }
 
         /// <summary>

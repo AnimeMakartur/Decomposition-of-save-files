@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("Cs2DataExporter")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+cf368edc809133c8ea2830ac1985d599d2c8f2ac")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+3ab5d5d81a194315014a710f2be0d1268314d0b2")]
 [assembly: System.Reflection.AssemblyProductAttribute("Cs2DataExporter")]
 [assembly: System.Reflection.AssemblyTitleAttribute("Cs2DataExporter")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

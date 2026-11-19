@@ -49,7 +49,9 @@ namespace Cs2DataExporter
         public int Id { get; set; }
         public string InGameName { get; set; }
         public string PrefabType { get; set; }
+        public string TransportType { get; set; }
         public int ParentEntityId { get; set; } // Дорога або будівля станції
+        public int? RoadEdgeId { get; set; }
         public float[] Pos { get; set; }
     }
 
@@ -58,6 +60,22 @@ namespace Cs2DataExporter
         public int Id { get; set; }
         public string InGameName { get; set; }
         public string PrefabType { get; set; }
+        public string TransportType { get; set; }
+        public int? StartStopId { get; set; }
+        public int? EndStopId { get; set; }
+        public int? TicketPrice { get; set; }
+        public int? VehicleCount { get; set; }
+        public int? TotalPassengerCapacity { get; set; }
         public List<int> WaypointEntityIds { get; set; } = new List<int>();
+        public List<int> StopIds { get; set; } = new List<int>();
+        public List<int> RoadEdgeIds { get; set; } = new List<int>();
+        public List<TransitVehicleDto> Vehicles { get; set; } = new List<TransitVehicleDto>();
+    }
+
+    public class TransitVehicleDto
+    {
+        public int Id { get; set; }
+        public string PrefabType { get; set; }
+        public int? PassengerCapacity { get; set; }
     }
 }
