@@ -17,18 +17,28 @@ namespace Cs2DataExporter
         public float[] Pos { get; set; } // [X, Y, Z]
     }
 
+    public class RoadLaneDto
+    {
+        public int Id { get; set; }
+        public string Type { get; set; } // "Car", "Bus", "Tram", "Bicycle", "Pedestrian", "Parking", "Other"
+        public int Direction { get; set; } // 1 (Start -> End), -1 (End -> Start), 0 (двосторонній рух, напр. тротуар)
+    }
+
     public class RoadEdgeDto
     {
         public int Id { get; set; }
+        public string InGameName { get; set; }
         public string PrefabType { get; set; }
         public int StartNodeId { get; set; }
         public int EndNodeId { get; set; }
         public float Length { get; set; }
+        public List<RoadLaneDto> Lanes { get; set; } = new List<RoadLaneDto>();
     }
 
     public class BuildingDto
     {
         public int Id { get; set; }
+        public string InGameName { get; set; }
         public string PrefabType { get; set; }
         public int ConnectedRoadEdgeId { get; set; }
         public float[] Pos { get; set; }
@@ -37,6 +47,7 @@ namespace Cs2DataExporter
     public class TransportStopDto
     {
         public int Id { get; set; }
+        public string InGameName { get; set; }
         public string PrefabType { get; set; }
         public int ParentEntityId { get; set; } // Дорога або будівля станції
         public float[] Pos { get; set; }
@@ -45,6 +56,7 @@ namespace Cs2DataExporter
     public class TransitRouteDto
     {
         public int Id { get; set; }
+        public string InGameName { get; set; }
         public string PrefabType { get; set; }
         public List<int> WaypointEntityIds { get; set; } = new List<int>();
     }

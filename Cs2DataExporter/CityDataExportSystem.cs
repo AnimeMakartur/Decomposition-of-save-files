@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using Colossal.Serialization.Entities;
 using Game;
@@ -9,6 +10,7 @@ using Game.Objects;
 using Game.Prefabs;
 using Game.Routes;
 using Game.Tools;
+using Game.UI;
 using Newtonsoft.Json;
 using Unity.Collections;
 using Unity.Entities;
@@ -19,6 +21,8 @@ namespace Cs2DataExporter
     public partial class CityDataExportSystem : GameSystemBase
     {
         private PrefabSystem _prefabSystem;
+        private NameSystem _nameSystem;
+
         private EntityQuery _roadNodeQuery;
         private EntityQuery _roadEdgeQuery;
         private EntityQuery _buildingQuery;
@@ -29,6 +33,7 @@ namespace Cs2DataExporter
         {
             base.OnCreate();
             _prefabSystem = World.GetOrCreateSystemManaged<PrefabSystem>();
+            _nameSystem = World.GetOrCreateSystemManaged<NameSystem>();
 
             // 1. Вузли доріг (перехрестя/точки з'єднання)
             _roadNodeQuery = GetEntityQuery(
@@ -75,10 +80,9 @@ namespace Cs2DataExporter
                 ComponentType.Exclude<Temp>()
             );
 
-            Enabled = false; // Виконуємо лише за тригером завантаження збереження
+            Enabled = false;
         }
 
-        // Автоматичний запуск після завантаження файлу збереження (.cok)
         protected override void OnGameLoadingComplete(Purpose purpose, GameMode mode)
         {
             base.OnGameLoadingComplete(purpose, mode);
@@ -111,7 +115,7 @@ namespace Cs2DataExporter
                     }
                 }
 
-                // 2. Збір ребер доріг (з'єднують StartNode та EndNode)
+                // 2. Збір ребер доріг, їхніх назв та масиву смуг
                 using (var entities = _roadEdgeQuery.ToEntityArray(Allocator.Temp))
                 {
                     foreach (var entity in entities)
@@ -123,15 +127,17 @@ namespace Cs2DataExporter
                         export.RoadEdges.Add(new RoadEdgeDto
                         {
                             Id = entity.Index,
+                            InGameName = GetEntityInGameName(entity),
                             PrefabType = GetPrefabName(prefabRef.m_Prefab),
                             StartNodeId = edge.m_Start.Index,
                             EndNodeId = edge.m_End.Index,
-                            Length = (float)Math.Round(curve.m_Length, 2)
+                            Length = (float)Math.Round(curve.m_Length, 2),
+                            Lanes = ExtractRoadLanes(entity)
                         });
                     }
                 }
 
-                // 3. Збір будівель та їх прив'язки до конкретного сегмента дороги
+                // 3. Збір будівель
                 using (var entities = _buildingQuery.ToEntityArray(Allocator.Temp))
                 {
                     foreach (var entity in entities)
@@ -143,6 +149,7 @@ namespace Cs2DataExporter
                         export.Buildings.Add(new BuildingDto
                         {
                             Id = entity.Index,
+                            InGameName = GetEntityInGameName(entity),
                             PrefabType = GetPrefabName(prefabRef.m_Prefab),
                             ConnectedRoadEdgeId = building.m_RoadEdge.Index,
                             Pos = RoundPos(transform.m_Position)
@@ -171,6 +178,7 @@ namespace Cs2DataExporter
                         export.Stops.Add(new TransportStopDto
                         {
                             Id = entity.Index,
+                            InGameName = GetEntityInGameName(entity),
                             PrefabType = GetPrefabName(prefabRef.m_Prefab),
                             ParentEntityId = parentId,
                             Pos = RoundPos(transform.m_Position)
@@ -189,13 +197,13 @@ namespace Cs2DataExporter
                         var routeDto = new TransitRouteDto
                         {
                             Id = entity.Index,
+                            InGameName = GetEntityInGameName(entity),
                             PrefabType = GetPrefabName(prefabRef.m_Prefab)
                         };
 
                         for (int i = 0; i < waypointsBuffer.Length; i++)
                         {
                             var wpEntity = waypointsBuffer[i].m_Waypoint;
-                            // Якщо точка маршруту прив'язана до зупинки (Connected), беремо ID самої зупинки
                             if (EntityManager.HasComponent<Connected>(wpEntity))
                             {
                                 var connected = EntityManager.GetComponentData<Connected>(wpEntity);
@@ -228,6 +236,131 @@ namespace Cs2DataExporter
             {
                 Mod.log.Error(ex, "Помилка під час експорту даних міста.");
             }
+        }
+
+        /// <summary>
+        /// Отримує список усіх смуг (SubLane), що належать сегменту дороги, із їх типом та напрямком.
+        /// </summary>
+        private List<RoadLaneDto> ExtractRoadLanes(Entity edgeEntity)
+        {
+            var lanesList = new List<RoadLaneDto>();
+
+            if (!EntityManager.HasBuffer<Game.Net.SubLane>(edgeEntity))
+            {
+                return lanesList;
+            }
+
+            var subLanes = EntityManager.GetBuffer<Game.Net.SubLane>(edgeEntity);
+            for (int i = 0; i < subLanes.Length; i++)
+            {
+                Entity laneEntity = subLanes[i].m_SubLane;
+                if (!EntityManager.Exists(laneEntity) || !EntityManager.HasComponent<Lane>(laneEntity))
+                {
+                    continue;
+                }
+
+                int direction = 1;
+                string laneType = DetermineLaneType(laneEntity, ref direction);
+
+                // Ігноруємо внутрішні технічні/допоміжні смуги без фізичного типу, якщо потрібно
+                if (laneType == "Ignore")
+                {
+                    continue;
+                }
+
+                lanesList.Add(new RoadLaneDto
+                {
+                    Id = laneEntity.Index,
+                    Type = laneType,
+                    Direction = direction
+                });
+            }
+
+            return lanesList;
+        }
+
+        /// <summary>
+        /// Визначає функціональний тип смуги за її ECS-компонентами та префабом.
+        /// </summary>
+        private string DetermineLaneType(Entity laneEntity, ref int direction)
+        {
+            // 1. Паркувальні смуги (можна відфільтрувати або залишити окремим типом)
+            if (EntityManager.HasComponent<Game.Net.ParkingLane>(laneEntity))
+            {
+                var parkingLane = EntityManager.GetComponentData<Game.Net.ParkingLane>(laneEntity);
+                direction = (parkingLane.m_Flags & ParkingLaneFlags.Invert) != 0 ? -1 : 1;
+                return "Parking";
+            }
+
+            // 2. Пішохідна смуга (тротуар / перехід)
+            if (EntityManager.HasComponent<Game.Net.PedestrianLane>(laneEntity))
+            {
+                direction = 0;
+                return "Pedestrian";
+            }
+
+            // 3. Рейковий транспорт (трамвайні колії на дорозі)
+            if (EntityManager.HasComponent<Game.Net.TrackLane>(laneEntity))
+            {
+                var trackLane = EntityManager.GetComponentData<Game.Net.TrackLane>(laneEntity);
+                direction = (trackLane.m_Flags & TrackLaneFlags.Twoway) != 0
+                    ? 0
+                    : (trackLane.m_Flags & TrackLaneFlags.Invert) != 0 ? -1 : 1;
+                return "Tram";
+            }
+
+            // 4. Автомобільні, автобусні та велосипедні смуги
+            if (EntityManager.HasComponent<Game.Net.CarLane>(laneEntity))
+            {
+                var carLane = EntityManager.GetComponentData<Game.Net.CarLane>(laneEntity);
+                direction = (carLane.m_Flags & CarLaneFlags.Twoway) != 0
+                    ? 0
+                    : (carLane.m_Flags & CarLaneFlags.Invert) != 0 ? -1 : 1;
+
+                // Перевірка на велосипедну смугу через префаб CarLaneData
+                if (EntityManager.HasComponent<PrefabRef>(laneEntity))
+                {
+                    var prefabEntity = EntityManager.GetComponentData<PrefabRef>(laneEntity).m_Prefab;
+                    if (EntityManager.HasComponent<CarLaneData>(prefabEntity))
+                    {
+                        var carLaneData = EntityManager.GetComponentData<CarLaneData>(prefabEntity);
+                        if ((carLaneData.m_RoadTypes & RoadTypes.Bicycle) != 0 &&
+                            (carLaneData.m_RoadTypes & RoadTypes.Car) == 0)
+                        {
+                            return "Bicycle";
+                        }
+                    }
+                }
+
+                // Смуга громадського транспорту (виділена автобусна смуга)
+                if ((carLane.m_Flags & CarLaneFlags.PublicOnly) != 0)
+                {
+                    return "Bus";
+                }
+
+                return "Car";
+            }
+
+            return "Ignore";
+        }
+
+        /// <summary>
+        /// Повертає локалізовану або кастомну назву об'єкта, яку бачить гравець у UI.
+        /// </summary>
+        private string GetEntityInGameName(Entity entity)
+        {
+            if (entity == Entity.Null || _nameSystem == null)
+            {
+                return string.Empty;
+            }
+
+            if (_nameSystem.TryGetCustomName(entity, out string customName) &&
+                !string.IsNullOrEmpty(customName))
+            {
+                return customName;
+            }
+
+            return _nameSystem.GetRenderedLabelName(entity) ?? string.Empty;
         }
 
         private string GetPrefabName(Entity prefabEntity)
