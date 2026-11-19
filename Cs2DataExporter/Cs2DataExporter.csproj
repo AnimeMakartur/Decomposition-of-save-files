@@ -1,9 +1,9 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
-
   <PropertyGroup>
     <TargetFramework>netstandard2.1</TargetFramework>
-    <Nullable>enable</Nullable>
+    <LangVersion>9.0</LangVersion>
   </PropertyGroup>
+
   <ItemGroup>
     <Reference Include="Game">
       <HintPath>D:\Games\Cities.Skylines.2.Ultimate.Edition-InsaneRamZes\Cities2_Data\Managed\Game.dll</HintPath>
@@ -15,6 +15,30 @@
     </Reference>
     <Reference Include="Colossal.Logging">
       <HintPath>D:\Games\Cities.Skylines.2.Ultimate.Edition-InsaneRamZes\Cities2_Data\Managed\Colossal.Logging.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="Colossal.Mathematics">
+      <HintPath>D:\Games\Cities.Skylines.2.Ultimate.Edition-InsaneRamZes\Cities2_Data\Managed\Colossal.Mathematics.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="Unity.Entities">
+      <HintPath>D:\Games\Cities.Skylines.2.Ultimate.Edition-InsaneRamZes\Cities2_Data\Managed\Unity.Entities.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="Unity.Mathematics">
+      <HintPath>D:\Games\Cities.Skylines.2.Ultimate.Edition-InsaneRamZes\Cities2_Data\Managed\Unity.Mathematics.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="Unity.Collections">
+      <HintPath>D:\Games\Cities.Skylines.2.Ultimate.Edition-InsaneRamZes\Cities2_Data\Managed\Unity.Collections.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="UnityEngine.CoreModule">
+      <HintPath>D:\Games\Cities.Skylines.2.Ultimate.Edition-InsaneRamZes\Cities2_Data\Managed\UnityEngine.CoreModule.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="Newtonsoft.Json">
+      <HintPath>D:\Games\Cities.Skylines.2.Ultimate.Edition-InsaneRamZes\Cities2_Data\Managed\Newtonsoft.Json.dll</HintPath>
       <Private>False</Private>
     </Reference>
   </ItemGroup>

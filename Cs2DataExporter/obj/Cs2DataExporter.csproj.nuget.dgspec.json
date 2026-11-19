@@ -1,17 +1,17 @@
 {
   "format": 1,
   "restore": {
-    "D:\\Важливі файли\\Decomposition of save files\\Cs2DataExporter\\Cs2DataExporter.csproj": {}
+    "d:\\Важливі файли\\Decomposition of save files\\Cs2DataExporter\\Cs2DataExporter.csproj": {}
   },
   "projects": {
-    "D:\\Важливі файли\\Decomposition of save files\\Cs2DataExporter\\Cs2DataExporter.csproj": {
+    "d:\\Важливі файли\\Decomposition of save files\\Cs2DataExporter\\Cs2DataExporter.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "D:\\Важливі файли\\Decomposition of save files\\Cs2DataExporter\\Cs2DataExporter.csproj",
+        "projectUniqueName": "d:\\Важливі файли\\Decomposition of save files\\Cs2DataExporter\\Cs2DataExporter.csproj",
         "projectName": "Cs2DataExporter",
-        "projectPath": "D:\\Важливі файли\\Decomposition of save files\\Cs2DataExporter\\Cs2DataExporter.csproj",
+        "projectPath": "d:\\Важливі файли\\Decomposition of save files\\Cs2DataExporter\\Cs2DataExporter.csproj",
         "packagesPath": "C:\\Users\\Lenovo\\.nuget\\packages\\",
-        "outputPath": "D:\\Важливі файли\\Decomposition of save files\\Cs2DataExporter\\obj\\",
+        "outputPath": "d:\\Важливі файли\\Decomposition of save files\\Cs2DataExporter\\obj\\",
         "projectStyle": "PackageReference",
         "fallbackFolders": [
           "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"

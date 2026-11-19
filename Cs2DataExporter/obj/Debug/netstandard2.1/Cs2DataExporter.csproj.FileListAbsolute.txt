@@ -8,3 +8,4 @@ D:\Важливі файли\Decomposition of save files\Cs2DataExporter\obj\Deb
 D:\Важливі файли\Decomposition of save files\Cs2DataExporter\obj\Debug\netstandard2.1\Cs2DataExporter.csproj.CoreCompileInputs.cache
 D:\Важливі файли\Decomposition of save files\Cs2DataExporter\obj\Debug\netstandard2.1\Cs2DataExporter.dll
 D:\Важливі файли\Decomposition of save files\Cs2DataExporter\obj\Debug\netstandard2.1\Cs2DataExporter.pdb
+D:\Важливі файли\Decomposition of save files\Cs2DataExporter\obj\Debug\netstandard2.1\Cs2DataExporter.sourcelink.json

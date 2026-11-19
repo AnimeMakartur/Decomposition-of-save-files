@@ -6,18 +6,18 @@ namespace Cs2DataExporter
 {
     public class Mod : IMod
     {
-        // Створюємо логер для виведення інформації
-        public static ILog log = LogManager.GetLogger("Cs2DataExporter").SetShowsErrorsInUI(false);
+        public static ILog log = LogManager.GetLogger("Cs2DataExporter").SetShowsErrorsInUI(true);
 
         public void OnLoad(UpdateSystem updateSystem)
         {
-            log.Info("Мод завантажено: ініціалізація експортера даних...");
-            // Далі тут ми будемо реєструвати систему для читання ECS
+            log.Info("Завантаження Cs2DataExporter...");
+            // Реєструємо нашу систему в ігровому циклі
+            updateSystem.UpdateAt<CityDataExportSystem>(SystemUpdatePhase.MainLoop);
         }
 
         public void OnDispose()
         {
-            log.Info("Мод вимкнено.");
+            log.Info("Вивантаження Cs2DataExporter.");
         }
     }
 }
